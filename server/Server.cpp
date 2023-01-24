@@ -13,6 +13,10 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <poll.h>
+#include <sys/fcntl.h>
+
+#include <vector>
 
 struct InitException : std::exception
 {
@@ -25,16 +29,16 @@ struct InitException : std::exception
 std::string addrinfoToString(addrinfo* info)
 {
     char ipstr[INET_ADDRSTRLEN];
-    struct sockaddr_in *ipv4 = (struct sockaddr_in*)info->ai_addr;
+    struct sockaddr_in *ipv4 = (sockaddr_in*)info->ai_addr;
     void *addr = &(ipv4->sin_addr);
-    inet_ntop(info->ai_family, addr, ipstr, sizeof(ipstr));
+    inet_ntop(ipv4->sin_family, addr, ipstr, sizeof(ipstr));
     return std::string{ipstr};
 }
 
 Server::Server(std::string port)
     : port {port}
 {
-    Logger::LOG(INFO, "Server created");
+    Logger::LOG(INFO, "server created");
 }
 
 void Server::init()
@@ -94,6 +98,12 @@ void Server::init()
 
     freeaddrinfo(servinfo);
 
+    if (fcntl(listenSockfd, F_SETFL, O_NONBLOCK) == -1)
+    {
+        Logger::LOG(ERROR, "server: failed to set non-blocking socket");
+        throw InitException{};
+    }
+
     if (p == NULL) 
     {
         Logger::LOG(ERROR, "server: failed to bind");
@@ -113,5 +123,58 @@ void Server::init()
 
 void Server::run()
 {
-    
+    std::vector<pollfd> pfds{};
+
+    pollfd listener {listenSockfd, POLLIN};
+    pfds.push_back(listener);
+
+    while (true)
+    {
+        int poll_count = poll(&pfds[0], pfds.size(), -1);
+
+        if (poll_count == -1)
+        {
+            Logger::LOG(ERROR, "poll");
+            // throw
+        }
+
+        for (int i = 0; i < pfds.size(); i++)
+        {
+            if (pfds[i].revents & POLLIN)
+            {
+                // ready to read
+                if (pfds[i].fd == listenSockfd)
+                {
+                    // new connection
+                    sockaddr_storage remoteaddr;
+                    socklen_t addrlen = sizeof(remoteaddr);
+                    int newfd = accept(listenSockfd,
+                        (struct sockaddr *)&remoteaddr,
+                        &addrlen);
+                    
+                    if (remoteaddr.ss_family != AF_INET)
+                    {
+                        Logger::LOG(ERROR, "only IPv4");
+                        close(newfd);
+                        // throw
+                    }
+
+                    char remoteIP[INET_ADDRSTRLEN];
+                    std::string newCliendAddress = inet_ntop(AF_INET, &remoteaddr,
+                        remoteIP, INET_ADDRSTRLEN);
+
+                    Logger::LOG(INFO, "new connection from: " + std::string{remoteIP});
+                }
+                else
+                {
+                    // already connected client
+                    // read message
+                }
+            }
+            else if (pfds[i].revents & POLLOUT)
+            {
+                // ready to write
+            }
+        }
+    }
 }
