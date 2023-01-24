@@ -1,3 +1,6 @@
+#include "Server.h"
+#include "Logger.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -11,119 +14,104 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-#define PORT "3490"  // the port users will be connecting to
-
-#define BACKLOG 10   // how many pending connections queue will hold
-
-void sigchld_handler(int s)
+struct InitException : std::exception
 {
-    // waitpid() might overwrite errno, so we save and restore it:
-    int saved_errno = errno;
-
-    while(waitpid(-1, NULL, WNOHANG) > 0);
-
-    errno = saved_errno;
-}
-
-
-// get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa)
-{
-    if (sa->sa_family == AF_INET) {
-        return &(((struct sockaddr_in*)sa)->sin_addr);
+    const char* what() const noexcept
+    {
+        return "Failure when initializing server";
     }
+};
 
-    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+std::string addrinfoToString(addrinfo* info)
+{
+    char ipstr[INET_ADDRSTRLEN];
+    struct sockaddr_in *ipv4 = (struct sockaddr_in*)info->ai_addr;
+    void *addr = &(ipv4->sin_addr);
+    inet_ntop(info->ai_family, addr, ipstr, sizeof(ipstr));
+    return std::string{ipstr};
 }
 
-int main(void)
+Server::Server(std::string port)
+    : port {port}
 {
-    int sockfd, new_fd;  // listen on sock_fd, new connection on new_fd
+    Logger::LOG(INFO, "Server created");
+}
+
+void Server::init()
+{
     struct addrinfo hints, *servinfo, *p;
-    struct sockaddr_storage their_addr; // connector's address information
-    socklen_t sin_size;
-    struct sigaction sa;
-    int yes=1;
-    char s[INET6_ADDRSTRLEN];
-    int rv;
+    struct sockaddr_storage their_addr;
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE; // use my IP
+    hints.ai_flags = AI_PASSIVE; // use default IP
 
-    if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0) {
+    int rv = getaddrinfo(NULL, port.c_str(), &hints, &servinfo);
+    if (rv != 0)
+    {
+        Logger::LOG(ERROR, "getaddrinfo failed!");
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-        return 1;
+        throw InitException{};
     }
 
     // loop through all the results and bind to the first we can
-    for(p = servinfo; p != NULL; p = p->ai_next) {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype,
-                p->ai_protocol)) == -1) {
-            perror("server: socket");
+    for (p = servinfo; p != NULL; p = p->ai_next)
+    {
+        if (p->ai_family == AF_INET6)
+        {
+            Logger::LOG(INFO, "skipping IPv6");
             continue;
         }
 
-        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
-                sizeof(int)) == -1) {
-            perror("setsockopt");
-            exit(1);
+        if ((listenSockfd = socket(p->ai_family, p->ai_socktype,
+                p->ai_protocol)) == -1)
+        {
+            Logger::LOG(ERROR, "server: socket");
+            continue;
         }
 
-        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(sockfd);
-            perror("server: bind");
+        int valTrue = 1;
+        if (setsockopt(listenSockfd, SOL_SOCKET, SO_REUSEADDR, &valTrue,
+                sizeof(int)) == -1)
+        {
+            Logger::LOG(ERROR, "setsockopt");
+            throw InitException{};
+        }
+
+        if (bind(listenSockfd, p->ai_addr, p->ai_addrlen) == -1)
+        {
+            close(listenSockfd);
+            Logger::LOG(ERROR, "server: bind");
             continue;
         }
 
         break;
     }
 
-    freeaddrinfo(servinfo); // all done with this structure
+    Logger::LOG(INFO, std::string{"server: "} +
+        addrinfoToString(servinfo) + std::string{":"} + port);
 
-    if (p == NULL)  {
-        fprintf(stderr, "server: failed to bind\n");
-        exit(1);
+    freeaddrinfo(servinfo);
+
+    if (p == NULL) 
+    {
+        Logger::LOG(ERROR, "server: failed to bind");
+        throw InitException{};
     }
 
-    if (listen(sockfd, BACKLOG) == -1) {
-        perror("listen");
-        exit(1);
+    if (listen(listenSockfd, backlog) == -1)
+    {
+        Logger::LOG(ERROR, "server: listen");
+        throw InitException{};
     }
 
-    sa.sa_handler = sigchld_handler; // reap all dead processes
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;
-    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-        perror("sigaction");
-        exit(1);
-    }
 
-    printf("server: waiting for connections...\n");
 
-    while(1) {  // main accept() loop
-        sin_size = sizeof their_addr;
-        new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
-        if (new_fd == -1) {
-            perror("accept");
-            continue;
-        }
+    Logger::LOG(INFO, "server: listening...");
+}
 
-        inet_ntop(their_addr.ss_family,
-            get_in_addr((struct sockaddr *)&their_addr),
-            s, sizeof s);
-        printf("server: got connection from %s\n", s);
-
-        if (!fork()) { // this is the child process
-            close(sockfd); // child doesn't need the listener
-            if (send(new_fd, "Hello, world!", 13, 0) == -1)
-                perror("send");
-            close(new_fd);
-            exit(0);
-        }
-        close(new_fd);  // parent doesn't need this
-    }
-
-    return 0;
+void Server::run()
+{
+    
 }
