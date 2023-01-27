@@ -1,2 +1,2 @@
 #!/bin/bash
-g++ -o server.out *.cpp
+g++ -o server.out -g *.cpp

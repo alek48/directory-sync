@@ -36,7 +36,7 @@ std::string addrinfoToString(addrinfo* info)
 }
 
 Server::Server(std::string port)
-    : port {port}
+    : port {port}, messageManager{}
 {
     Logger::LOG(INFO, "server created");
 }
@@ -149,7 +149,7 @@ void Server::run()
                     sockaddr_storage remoteaddr;
                     socklen_t addrlen = sizeof(remoteaddr);
                     int newfd = accept(listenSockfd,
-                        (struct sockaddr *)&remoteaddr,
+                        (sockaddr *)&remoteaddr,
                         &addrlen);
                     
                     if (remoteaddr.ss_family != AF_INET)
@@ -160,15 +160,50 @@ void Server::run()
                     }
 
                     char remoteIP[INET_ADDRSTRLEN];
-                    std::string newCliendAddress = inet_ntop(AF_INET, &remoteaddr,
+                    std::string newCliendAddress = inet_ntop(AF_INET, (sockaddr_in*)&remoteaddr,
                         remoteIP, INET_ADDRSTRLEN);
-
-                    Logger::LOG(INFO, "new connection from: " + std::string{remoteIP});
+                    
+                    pollfd newPfd{newfd, POLLIN};
+                    pfds.push_back(newPfd);
+                    Logger::LOG(INFO, "server: new connection from: " + std::string{remoteIP});
                 }
                 else
                 {
                     // already connected client
                     // read message
+                    char buf[4+4+4096]; // len+type+data; max size for single message
+                    int nbytes = recv(pfds[i].fd, buf, sizeof(buf), 0);
+                    int sender_fd = pfds[i].fd;
+
+                    if (nbytes <= 0) // no data
+                    {
+                        if (nbytes == 0)
+                        {
+                            Logger::LOG(INFO, "Client disconnected");
+                        }
+                        else
+                        {
+                            Logger::LOG(ERROR, "Failed at reading client's message");
+                        }
+                        close(pfds[i].fd);
+
+                        // TODO: handle removed client
+                    }
+                    else
+                    {
+                        messageManager.processMessageData(pfds[i].fd, &(buf[0]), nbytes);
+                    }
+                    
+                    // message types:
+                    // command: command text
+                    // request: upload
+                    // request: download
+                    // request: sync (files and mod-dates)
+                    // filepart: filename part-num and binarry data
+
+                    // message spec:
+                    // int len | int type | data
+                    // max 4kB
                 }
             }
             else if (pfds[i].revents & POLLOUT)
