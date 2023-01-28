@@ -1,9 +1,11 @@
 #pragma once
 
-#include "Command.h"
 #include <vector>
+#include <string>
 
-class Stage
+enum Stage
 {
-    std::vector<Command> availableCommands;
+    Connected, Syncing
 };
+
+std::vector<std::string> getAvailableCommands(Stage stage);

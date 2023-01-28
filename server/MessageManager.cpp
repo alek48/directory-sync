@@ -1,4 +1,6 @@
 #include "MessageManager.h"
+#include "CommandProcessor.h"
+#include "ClientManager.h"
 
 void readMessageHeader(Message& message, char* data)
 {
@@ -70,6 +72,8 @@ void MessageManager::processMessagesInQueue()
     while (!messagesIn.empty())
     {
         Message& message = messagesIn.front();
+        Client& client = ClientManager::getInstance()->getClientOnSock(message.sock);
+
         if (message.type == Text)
         {
             TextMessage textMessage = TextMessage::create(message.data);
@@ -78,6 +82,8 @@ void MessageManager::processMessagesInQueue()
         else if (message.type == Command)
         {
             CommandMessage commandMessage = CommandMessage::create(message.data);
+            Message newMessage = CommandProcessor::executeCommandMessage(client, commandMessage);
+            messagesOut.push(newMessage);
         }
         else if (message.type == FilePart)
         {
@@ -100,7 +106,7 @@ int MessageManager::getMessageForSock(int sockfd)
 {
     int num = 0;
     int idx = 0;
-    for (int i = 0; i < partialMessagesIn.size(); i++)
+    for (unsigned i = 0; i < partialMessagesIn.size(); i++)
     {
         if (partialMessagesIn[i].sock == sockfd)
         {

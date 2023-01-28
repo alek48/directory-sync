@@ -23,6 +23,7 @@ def createMessage(type, data):
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
     s.sendall(createMessage(MESSAGE_TYPES['Text'], b'Hello'))
+    s.sendall(createMessage(MESSAGE_TYPES['Command'], b'Hello World'))
     #data = s.recv(1024)
 
 #print(f"Received {data!r}")

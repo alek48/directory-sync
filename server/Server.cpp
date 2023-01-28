@@ -1,5 +1,6 @@
 #include "Server.h"
 #include "Logger.h"
+#include "ClientManager.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,7 +45,6 @@ Server::Server(std::string port)
 void Server::init()
 {
     struct addrinfo hints, *servinfo, *p;
-    struct sockaddr_storage their_addr;
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -135,10 +135,10 @@ void Server::run()
         if (poll_count == -1)
         {
             Logger::LOG(ERROR, "poll");
-            // throw
+            throw std::exception{};
         }
 
-        for (int i = 0; i < pfds.size(); i++)
+        for (unsigned i = 0; i < pfds.size(); i++)
         {
             if (pfds[i].revents & POLLIN)
             {
@@ -164,6 +164,7 @@ void Server::run()
                     
                     pollfd newPfd{newfd, POLLIN};
                     pfds.push_back(newPfd);
+                    ClientManager::getInstance()->addClient(Client{newfd, remoteIP});
                     Logger::LOG(INFO, "server: new connection from: " + std::string{remoteIP});
                 }
                 else
@@ -171,8 +172,8 @@ void Server::run()
                     // already connected client
                     // read message
                     char buf[4+4+4096]; // len+type+data; max size for single message
-                    int nbytes = recv(pfds[i].fd, buf, sizeof(buf), 0);
                     int sender_fd = pfds[i].fd;
+                    int nbytes = recv(sender_fd, buf, sizeof(buf), 0);
 
                     if (nbytes <= 0) // no data
                     {
@@ -184,13 +185,13 @@ void Server::run()
                         {
                             Logger::LOG(ERROR, "Failed at reading client's message");
                         }
-                        close(pfds[i].fd);
+                        close(sender_fd);
                         pfds.erase(std::next(pfds.begin(), i));
                         // TODO: handle removed client
                     }
                     else
                     {
-                        messageManager.processMessageData(pfds[i].fd, &(buf[0]), nbytes);
+                        messageManager.processMessageData(sender_fd, &(buf[0]), nbytes);
                     }
                     
                     // message types:

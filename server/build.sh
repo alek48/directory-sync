@@ -1,2 +1,2 @@
 #!/bin/bash
-g++ -o server.out -g *.cpp
+g++ -Wall -std=c++17 -o server.out -g *.cpp

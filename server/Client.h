@@ -4,9 +4,11 @@
 
 #include <string>
 
-class client
+class Client
 {
-private:
+public:
+    Client(int sockfd, std::string address = "");
+
     int sockfd;
     std::string address;
     Stage currentStage;

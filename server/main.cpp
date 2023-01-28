@@ -9,7 +9,7 @@ int main()
     {
         server.init();
     }
-    catch (std::exception e)
+    catch (std::exception& e)
     {
         Logger::LOG(ERROR, e.what());
         return -1;
@@ -19,7 +19,7 @@ int main()
     {
         server.run();
     }
-    catch (std::exception e)
+    catch (std::exception& e)
     {
         Logger::LOG(ERROR, e.what());
     }
