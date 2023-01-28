@@ -1,6 +1,6 @@
 #include "MessageManager.h"
 
-void readHeader(Message& message, char* data)
+void readMessageHeader(Message& message, char* data)
 {
     // cast char* to int* and read bytes as int
     message.len = ntohl(*reinterpret_cast<int*>(data));
@@ -14,7 +14,7 @@ int readMessageData(Message& message, char* data, int dataLen)
     int savedData = 0;
     for (int i = 0; i < remaining && i < dataLen; i++)
     {
-        message.data[message.currentLen] = *data;
+        message.data.push_back(*data);
         ++message.currentLen;
         ++data;
         ++savedData;
@@ -40,7 +40,7 @@ void MessageManager::processMessageData(int sockfd, char* buffData, int buffLen)
         {
             Message message{};
             message.sock = sockfd;
-            readHeader(message, buffData);
+            readMessageHeader(message, buffData);
             buffData += 8; // move by 8 bytes
             buffLen -= 8;
 
@@ -65,26 +65,57 @@ void MessageManager::processMessageData(int sockfd, char* buffData, int buffLen)
     }
 }
 
-int MessageManager::getMessageForSock(int sockfd)
+void MessageManager::processMessagesInQueue()
+{
+    while (!messagesIn.empty())
     {
-        int num = 0;
-        int idx = 0;
-        for (int i = 0; i < partialMessagesIn.size(); i++)
+        Message& message = messagesIn.front();
+        if (message.type == Text)
         {
-            if (partialMessagesIn[i].sock == sockfd)
-            {
-                ++num;
-                idx = i; 
-            }
+            TextMessage textMessage = TextMessage::create(message.data);
+            Logger::LOG(INFO, "Got message from client: " + textMessage.text);
         }
-
-        if (num == 0)
-            return -1;
-        else if (num == 1)
-            return idx;
+        else if (message.type == Command)
+        {
+            CommandMessage commandMessage = CommandMessage::create(message.data);
+        }
+        else if (message.type == FilePart)
+        {
+            FilePartMessage filePartMessage = FilePartMessage::create(message.data);
+        }
+        else if (message.type == DirPart)
+        {
+            DirPartMessage dirPartMessage = DirPartMessage::create(message.data);
+        }
         else
         {
-            Logger::LOG(ERROR, "More than one message at a time for single client");
-            throw std::exception{};
+            Logger::LOG(ERROR, "Wrong message type");
+        }
+
+        messagesIn.pop();
+    }
+}
+
+int MessageManager::getMessageForSock(int sockfd)
+{
+    int num = 0;
+    int idx = 0;
+    for (int i = 0; i < partialMessagesIn.size(); i++)
+    {
+        if (partialMessagesIn[i].sock == sockfd)
+        {
+            ++num;
+            idx = i; 
         }
     }
+
+    if (num == 0)
+        return -1;
+    else if (num == 1)
+        return idx;
+    else
+    {
+        Logger::LOG(ERROR, "More than one message at a time for single client");
+        throw std::exception{};
+    }
+}

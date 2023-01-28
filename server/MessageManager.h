@@ -8,13 +8,14 @@
 #include <vector>
 #include <queue>
 
-void readHeader(Message& message, char* data);
+void readMessageHeader(Message& message, char* data);
 int readMessageData(Message& message, char* data, int dataLen);
 
 class MessageManager
 {
 public:
     void processMessageData(int sockfd, char* buffData, int buffLen);
+    void processMessagesInQueue();
 
 private:
     std::vector<Message> partialMessagesIn;

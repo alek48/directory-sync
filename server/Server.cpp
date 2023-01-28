@@ -156,7 +156,6 @@ void Server::run()
                     {
                         Logger::LOG(ERROR, "only IPv4");
                         close(newfd);
-                        // throw
                     }
 
                     char remoteIP[INET_ADDRSTRLEN];
@@ -186,7 +185,7 @@ void Server::run()
                             Logger::LOG(ERROR, "Failed at reading client's message");
                         }
                         close(pfds[i].fd);
-
+                        pfds.erase(std::next(pfds.begin(), i));
                         // TODO: handle removed client
                     }
                     else
@@ -211,5 +210,7 @@ void Server::run()
                 // ready to write
             }
         }
+
+        messageManager.processMessagesInQueue();
     }
 }

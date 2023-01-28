@@ -1,12 +1,13 @@
 #pragma once
 
-#include <array>
+#include <vector>
+#include <string>
 
 constexpr int MAX_MESSAGE_SIZE = 4096;
 
 enum MessageType
 {
-    Command, Request, FilePart
+    Text, Command, FilePart, DirPart
 };
 
 struct Message
@@ -15,5 +16,33 @@ struct Message
     MessageType type;
     int sock;
     int currentLen = 0;
-    std::array<char, MAX_MESSAGE_SIZE> data;
+    std::vector<char> data;
+};
+
+struct TextMessage
+{
+    static std::vector<char> serialize();
+    static TextMessage create(std::vector<char>& data);
+
+    std::string text;
+};
+
+struct CommandMessage
+{
+    static std::vector<char> serialize();
+    static CommandMessage create(std::vector<char>& data);
+
+    std::vector<std::string> parts;
+};
+
+struct FilePartMessage
+{
+    static std::vector<char> serialize();
+    static FilePartMessage create(std::vector<char>& data);
+};
+
+struct DirPartMessage
+{
+    static std::vector<char> serialize();
+    static DirPartMessage create(std::vector<char>& data);
 };
