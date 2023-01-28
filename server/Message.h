@@ -55,7 +55,7 @@ struct DirEntry
 
 struct DirPartMessage
 {
-    static std::vector<char> serialize(DirPartMessage dirPartMessage);
+    static std::vector<char> serialize(DirPartMessage dirPartMessage); // entries: filepath1:epoch_mod_date1;filepath2:epoch_mod_date2
     static DirPartMessage create(std::vector<char>& data);
 
     int numOfAllEntries;

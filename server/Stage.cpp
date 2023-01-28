@@ -16,7 +16,9 @@ std::vector<std::string> getAvailableCommands(Stage stage)
     else if (stage == Syncing)
     {
         return std::vector<std::string> {
-
+            "request download [filepath]",
+            "request upload [filepath]",
+            "list entries"
         };
     }
     else
