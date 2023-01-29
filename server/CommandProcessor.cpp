@@ -1,7 +1,11 @@
 #include "CommandProcessor.h"
+#include "Message.h"
+#include "Client.h"
 #include "ClientManager.h"
 #include "VaultManager.h"
+#include "Vault.h"
 #include "MessageManager.h"
+#include "User.h"
 #include "Logger.h"
 
 void sendHelpMessage(Stage stage, int sockfd, bool wrongCommand = false)
@@ -20,15 +24,13 @@ void sendHelpMessage(Stage stage, int sockfd, bool wrongCommand = false)
 
 void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& commandMessage)
 {
-    Stage clientStage = client.currentStage;
-
     if (commandMessage.parts.size() == 1 && commandMessage.parts[0] == "help")
     {
-        sendHelpMessage(clientStage, client.sockfd);
+        sendHelpMessage(client.currentStage, client.sockfd);
         return;
     }
 
-    if (clientStage == Connected)
+    if (client.currentStage == Connected)
     {
         if (commandMessage.parts.size() == 1)
         {
@@ -44,7 +46,7 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
             }
             else
             {
-                sendHelpMessage(clientStage, client.sockfd, true);
+                sendHelpMessage(client.currentStage, client.sockfd, true);
             }
         }
         else if (commandMessage.parts.size() == 2)
@@ -67,7 +69,7 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
             }
             else
             {
-                sendHelpMessage(clientStage, client.sockfd, true);
+                sendHelpMessage(client.currentStage, client.sockfd, true);
             }
         }
         else if (commandMessage.parts.size() == 3)
@@ -97,51 +99,70 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
                 }
                 else
                 {
+                    client.currentStage = Syncing;
                     MessageManager::getInstance()->addMessageOut(
                         createMessage(TextMessage{"Syncing"}, client.sockfd));
                 }
 
-                if (type != "safe" || type != "force")
+                if (type != "safe" && type != "force")
                 {
-                    sendHelpMessage(clientStage, client.sockfd, true);
+                    sendHelpMessage(client.currentStage, client.sockfd, true);
                 }
             }
             else
             {
-                sendHelpMessage(clientStage, client.sockfd, true);
+                sendHelpMessage(client.currentStage, client.sockfd, true);
             }
         }
         else
         {
-            sendHelpMessage(clientStage, client.sockfd, true);
+            sendHelpMessage(client.currentStage, client.sockfd, true);
         }
     }
-    else if (clientStage == Syncing)
+    else if (client.currentStage == Syncing)
     {
-        if (commandMessage.parts[0].size() == 3)
+        if (commandMessage.parts.size() == 3)
         {
             if (commandMessage.parts[0] == "request")
             {
                 std::string filepath = commandMessage.parts[2];
                 if (commandMessage.parts[1] == "download")
                 {
-                    
+                    if (client.user->openFile(filepath))
+                    {
+                        MessageManager::getInstance()->addMessageOut(
+                            createMessage(TextMessage{"OK"}, client.sockfd));
+                    }
+                    else
+                    {
+                        MessageManager::getInstance()->addMessageOut(
+                            createMessage(TextMessage{"Could not open file " + filepath}, client.sockfd));
+                    }
                 }
                 else if (commandMessage.parts[1] == "upload")
                 {
-                    
+                    if (client.user->createFile(filepath))
+                    {
+                        MessageManager::getInstance()->addMessageOut(
+                            createMessage(TextMessage{"OK"}, client.sockfd));
+                    }
+                    else
+                    {
+                        MessageManager::getInstance()->addMessageOut(
+                            createMessage(TextMessage{"Could not create file" + filepath}, client.sockfd));
+                    }
                 }
                 else
                 {
-                    sendHelpMessage(clientStage, client.sockfd, true);
+                    sendHelpMessage(client.currentStage, client.sockfd, true);
                 }
             }
             else
             {
-                sendHelpMessage(clientStage, client.sockfd, true);
+                sendHelpMessage(client.currentStage, client.sockfd, true);
             }
         }
-        else if (commandMessage.parts[0].size() == 2)
+        else if (commandMessage.parts.size() == 2)
         {
             if (commandMessage.parts[0] == "list" && 
                 commandMessage.parts[1] == "entries")
@@ -152,12 +173,12 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
             }
             else
             {
-                sendHelpMessage(clientStage, client.sockfd, true);
+                sendHelpMessage(client.currentStage, client.sockfd, true);
             }
         }
         else
         {
-            sendHelpMessage(clientStage, client.sockfd, true);
+            sendHelpMessage(client.currentStage, client.sockfd, true);
         }
     }
     else

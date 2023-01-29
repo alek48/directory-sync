@@ -89,7 +89,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             print("Error: not a text message")
         
         if (typedMessage.text == "Syncing"):
-            syncing = True
+            syncing = False ###### False for testing ######
 
         print(typedMessage.text)
 

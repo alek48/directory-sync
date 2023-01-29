@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Vault.h"
-
 #include <vector>
 #include <string>
+
+class Vault;
+struct DirEntry;
 
 constexpr int MAX_MESSAGE_SIZE = 4096;
 

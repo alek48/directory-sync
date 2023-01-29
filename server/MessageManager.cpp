@@ -1,6 +1,10 @@
 #include "MessageManager.h"
 #include "CommandProcessor.h"
 #include "ClientManager.h"
+#include "Message.h"
+#include "Logger.h"
+
+#include <netinet/in.h>
 
 #include <algorithm>
 

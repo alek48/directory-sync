@@ -1,6 +1,8 @@
 #pragma once
 
-#include "Client.h"
+#include <vector>
+
+class Client;
 
 class ClientManager // singleton
 {

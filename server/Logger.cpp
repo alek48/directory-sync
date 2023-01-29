@@ -1,5 +1,7 @@
 #include "Logger.h"
 
+#include <iostream>
+
 void Logger::LOG(LogType type, std::string message)
 {
     switch (type)

@@ -1,4 +1,8 @@
 #include "Message.h"
+#include "Vault.h"
+
+#include <vector>
+#include <string>
 
 TextMessage TextMessage::create(std::vector<char>& data)
 {

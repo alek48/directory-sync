@@ -1,6 +1,7 @@
 #include "Server.h"
 #include "Logger.h"
 #include "ClientManager.h"
+#include "Client.h"
 #include "MessageManager.h"
 
 #include <stdio.h>
@@ -202,7 +203,7 @@ void Server::run()
                         }
                         close(sender_fd);
                         pfds.erase(std::next(pfds.begin(), i));
-                        // TODO: handle removed client
+                        ClientManager::getInstance()->removeClientOnSock(pfds[i].fd);
                     }
                     else
                     {

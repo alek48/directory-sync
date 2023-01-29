@@ -1,8 +1,9 @@
 #pragma once
 
-#include "Vault.h"
-
 #include <vector>
+#include <string>
+
+class Vault;
 
 class VaultManager // singleton
 {
@@ -23,6 +24,7 @@ public:
     bool closeVault(const std::string& name);
 
     void setStoragePath(const std::string& storagePath);
+    std::string getStoragePath() const;
 
     Vault& getVault(const std::string& name);
 

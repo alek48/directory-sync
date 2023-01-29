@@ -1,8 +1,11 @@
 #include "VaultManager.h"
+#include "Vault.h"
+#include "User.h"
 #include "Logger.h"
 
-#include <filesystem>
 #include <string>
+#include <vector>
+#include <filesystem>
 #include <algorithm>
 
 namespace fs = std::filesystem; // requires c++17
@@ -57,6 +60,11 @@ void VaultManager::setStoragePath(const std::string& storagePath)
 {
     storagePath.back() == '/' ? 
         this->storagePath = storagePath : this->storagePath = storagePath + '/';
+}
+
+std::string VaultManager::getStoragePath() const
+{
+    return storagePath;
 }
 
 Vault& VaultManager::getVault(const std::string& name)

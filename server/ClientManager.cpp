@@ -1,5 +1,7 @@
 #include "ClientManager.h"
+#include "Client.h"
 
+#include <vector>
 #include <algorithm>
 
 ClientManager* ClientManager::clientManager_ = nullptr;
@@ -20,6 +22,11 @@ void ClientManager::addClient(Client client)
 Client& ClientManager::getClientOnSock(int sockfd)
 {
     return *getInter(sockfd);
+}
+
+void ClientManager::removeClientOnSock(int sockfd)
+{
+    clients.erase(getInter(sockfd));
 }
 
 std::vector<Client>::iterator ClientManager::getInter(int sockfd)

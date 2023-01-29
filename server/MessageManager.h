@@ -1,12 +1,9 @@
 #pragma once
 
-#include "Message.h"
-#include "Logger.h"
-
-#include <netinet/in.h>
-
 #include <vector>
 #include <queue>
+
+class Message;
 
 void readMessageHeader(Message& message, char* data);
 int readMessageData(Message& message, char* data, int dataLen);

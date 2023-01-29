@@ -1,18 +1,23 @@
 #pragma once
 
-#include "Client.h"
+#include <string>
 
-enum SyncOption
-{
-    Safe, Force
-};
+class Client;
+class Vault;
 
 class User // client in vault
 {
 public:
-    User(Client& client, SyncOption syncOption);
+    User(Client& client, Vault* vault, bool privileged = false);
+    ~User();
 
-    const Client* client;
-    SyncOption syncOption;
-    bool privileged = false;
+    Client* const client;
+    const Vault* const vault;
+    bool privileged;
+    int fileFd = -1;
+
+    bool createFile(const std::string& path);
+    bool openFile(const std::string& path);
+    void uploadFile();
+    void downloadFile();
 };

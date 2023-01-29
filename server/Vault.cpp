@@ -1,6 +1,13 @@
 #include "Vault.h"
 #include "VaultManager.h"
+#include "User.h"
+#include "Client.h"
 
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#include <string>
+#include <vector>
 #include <filesystem>
 #include <chrono>
 #include <algorithm>
@@ -25,6 +32,29 @@ int getModDateEpoch(const fs::directory_entry& entry)
     return std::chrono::duration_cast<std::chrono::seconds>(
                    sysClock.time_since_epoch()).count();
 
+}
+
+Vault::Vault(std::string name) : 
+    name {name},
+    workingDirPath {VaultManager::getInstance()->storagePath + name + "/"}
+{
+
+}
+
+std::vector<std::string> Vault::getFiles() const
+{
+    std::vector<std::string> files;
+    std::string path = VaultManager::getInstance()->storagePath;
+
+    for (const auto& entry : fs::recursive_directory_iterator(path+name))
+    {   
+        if (!fs::is_directory(entry.status())) // only files
+        {
+            files.push_back(entry.path());
+        }
+    }
+
+    return files;
 }
 
 std::vector<DirEntry> Vault::getEntries() const
@@ -65,18 +95,32 @@ bool Vault::sync(Client& client, const std::string& syncOption)
 
     if (syncOption == "safe")
     {
-        users.push_back(User{client, Safe});
+        users.emplace_back(User{client, this});
+        client.user = &(users.back());
         return true;
     }
     else if (syncOption == "force")
     {
         if (users.size() == 0)
         {
-            users.push_back(User{client, Force});
+            users.emplace_back(User{client, this, true});
+            client.user = &(users.back());
             return true;
         }
         return false;
     }
     else
         return false;
+}
+
+int Vault::createFile(const std::string& relativePath) const
+{
+    std::string path = workingDirPath + relativePath;
+    return open(path.c_str(), O_WRONLY|O_CREAT|O_TRUNC);
+}
+
+int Vault::openFile(const std::string& relativePath) const
+{
+    std::string path = (workingDirPath + relativePath);
+    return open(path.c_str(), O_RDONLY);
 }

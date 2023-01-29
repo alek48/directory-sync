@@ -1,5 +1,5 @@
-#include "Message.h"
-#include "Client.h"
+class Client;
+class CommandMessage;
 
 class CommandProcessor
 {
