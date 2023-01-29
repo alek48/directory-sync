@@ -13,17 +13,35 @@ MESSAGE_TYPES = {
 def intToBytes(val):
     return val.to_bytes(4, 'big') # 4 bytes in big endian
 
+def bytesToInt(b_val):
+    return int.from_bytes(b_val, "big")
+
 def stringToBytes(val):
-    return val.encode()  
+    return val.encode()
+
+def bytesToString(b_val):
+    return b_val.decode()  
 
 # data should be max 4096 bytes
 def createMessage(type, data):
     return intToBytes(len(data)) + intToBytes(type) + data
 
+def readMessage(data):
+    len = bytesToInt(data[0:4])
+    type = bytesToInt(data[4:8])
+    messageData = data[8:]
+    if (type == MESSAGE_TYPES['Text']):
+        print(bytesToString(messageData))
+
+
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
     s.sendall(createMessage(MESSAGE_TYPES['Text'], b'Hello'))
-    s.sendall(createMessage(MESSAGE_TYPES['Command'], b'Hello World'))
-    #data = s.recv(1024)
+    s.sendall(createMessage(MESSAGE_TYPES['Text'], b'ab'))
+    s.sendall(createMessage(MESSAGE_TYPES['Text'], b'c'))
+    s.sendall(createMessage(MESSAGE_TYPES['Text'], b'd'))
+    s.sendall(createMessage(MESSAGE_TYPES['Command'], b'list'))
+    data = s.recv(4096)
+    readMessage(data)
 
 #print(f"Received {data!r}")

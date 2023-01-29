@@ -1,6 +1,7 @@
 #include "Server.h"
 #include "Logger.h"
 #include "ClientManager.h"
+#include "MessageManager.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,8 +37,22 @@ std::string addrinfoToString(addrinfo* info)
     return std::string{ipstr};
 }
 
+std::vector<int> getSocketsReadyToWrite(std::vector<pollfd>& pfds)
+{
+    std::vector<int> sockets;
+    for (const auto& pfd : pfds)
+    {
+        if (pfd.revents & POLLOUT)
+        {
+            sockets.push_back(pfd.fd);
+        }
+    }
+
+    return sockets;
+}
+
 Server::Server(std::string port)
-    : port {port}, messageManager{}
+    : port {port}
 {
     Logger::LOG(INFO, "server created");
 }
@@ -162,7 +177,7 @@ void Server::run()
                     std::string newCliendAddress = inet_ntop(AF_INET, (sockaddr_in*)&remoteaddr,
                         remoteIP, INET_ADDRSTRLEN);
                     
-                    pollfd newPfd{newfd, POLLIN};
+                    pollfd newPfd{newfd, POLLIN | POLLOUT};
                     pfds.push_back(newPfd);
                     ClientManager::getInstance()->addClient(Client{newfd, remoteIP});
                     Logger::LOG(INFO, "server: new connection from: " + std::string{remoteIP});
@@ -171,7 +186,7 @@ void Server::run()
                 {
                     // already connected client
                     // read message
-                    char buf[4+4+4096]; // len+type+data; max size for single message
+                    char buf[4+4+4096]{}; // len+type+data; max size for single message
                     int sender_fd = pfds[i].fd;
                     int nbytes = recv(sender_fd, buf, sizeof(buf), 0);
 
@@ -191,27 +206,15 @@ void Server::run()
                     }
                     else
                     {
-                        messageManager.processMessageData(sender_fd, &(buf[0]), nbytes);
+                        MessageManager::getInstance()->processMessageData(sender_fd, &(buf[0]), nbytes);
                     }
-                    
-                    // message types:
-                    // command: command text
-                    // request: upload
-                    // request: download
-                    // request: sync (files and mod-dates)
-                    // filepart: filename part-num and binarry data
-
-                    // message spec:
-                    // int len | int type | data
-                    // max 4kB
                 }
-            }
-            else if (pfds[i].revents & POLLOUT)
-            {
-                // ready to write
             }
         }
 
-        messageManager.processMessagesInQueue();
+        MessageManager::getInstance()->processMessageQueue();
+        
+        if (!MessageManager::getInstance()->isMessageOutEmpty())
+            MessageManager::getInstance()->sendMessageToSock(getSocketsReadyToWrite(pfds));
     }
 }

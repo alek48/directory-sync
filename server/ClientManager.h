@@ -5,7 +5,7 @@
 class ClientManager // singleton
 {
 protected:
-    ClientManager() : clients{} {}
+    ClientManager() = default;
     static ClientManager* clientManager_;
 
 public:

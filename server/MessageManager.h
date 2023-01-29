@@ -11,16 +11,28 @@
 void readMessageHeader(Message& message, char* data);
 int readMessageData(Message& message, char* data, int dataLen);
 
-class MessageManager
+class MessageManager // singleton
 {
+protected:
+    MessageManager() = default;
+    static MessageManager* messageManager_;
+
 public:
+    MessageManager(MessageManager& other) = delete;
+    void operator=(const MessageManager &) = delete;
+    static MessageManager *getInstance();
+
     void processMessageData(int sockfd, char* buffData, int buffLen);
-    void processMessagesInQueue();
+    void processMessageQueue();
+    void addMessageOut(Message message);
+    void sendMessageToSock(std::vector<int> sockets);
+
+    bool isMessageOutEmpty();
 
 private:
     std::vector<Message> partialMessagesIn;
     std::queue<Message> messagesIn;
-    std::queue<Message> messagesOut;
+    std::vector<Message> messagesOut;
 
     int getMessageForSock(int sockfd);
 };

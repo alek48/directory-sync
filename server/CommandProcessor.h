@@ -4,5 +4,5 @@
 class CommandProcessor
 {
 public:
-    static Message executeCommandMessage(Client& client, CommandMessage& commandMessage);
+    static void executeCommandMessage(Client& client, CommandMessage& commandMessage);
 };

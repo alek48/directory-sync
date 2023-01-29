@@ -62,3 +62,8 @@ struct DirPartMessage
     int numOfEntries;
     std::vector<DirEntry> entries;
 };
+
+Message createMessage(TextMessage textMessage, int sockfd);
+Message createMessage(CommandMessage commandMessage, int sockfd);
+Message createMessage(FilePartMessage filePartMessage, int sockfd);
+Message createMessage(DirPartMessage dirPartMessage, int sockfd);

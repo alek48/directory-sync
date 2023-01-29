@@ -4,16 +4,24 @@
 
 #include <vector>
 
-class VaultManager
+class VaultManager // singleton
 {
+protected:
+    VaultManager() = default;
+    static VaultManager* vaultManager_;
+
 public:
-    VaultManager(std::string storagePath);
+    VaultManager(VaultManager& other) = delete;
+    void operator=(const VaultManager &) = delete;
+    static VaultManager *getInstance();
 
     std::vector<std::string> listAllVaults();
-
+    
     void createVault(std::string name);
     void openVault(std::string name);
     void closeVault(std::string name);
+
+    void setStoragePath(std::string storagePath);
 
 private:
     std::string storagePath;

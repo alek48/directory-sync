@@ -3,7 +3,8 @@
 TextMessage TextMessage::create(std::vector<char>& data)
 {
     TextMessage textMessage{};
-    textMessage.text = std::string{&(data[0])};
+    for (char c : data)
+        textMessage.text += c;
     return textMessage;
 }
 
@@ -37,6 +38,14 @@ CommandMessage CommandMessage::create(std::vector<char>& data)
     return commandMessage;
 }
 
+std::vector<char> CommandMessage::serialize(CommandMessage commandMessage)
+{
+    std::vector<char> data;
+    // TODO:
+    // but server doesn't need it
+    return data;
+}
+
 FilePartMessage FilePartMessage::create(std::vector<char>& data)
 {
     FilePartMessage filePartMessage{};
@@ -44,9 +53,51 @@ FilePartMessage FilePartMessage::create(std::vector<char>& data)
     return filePartMessage;
 }
 
+std::vector<char> FilePartMessage::serialize(FilePartMessage filePartMessage)
+{
+    std::vector<char> data;
+    // TODO:
+    return data;
+}
+
 DirPartMessage DirPartMessage::create(std::vector<char>& data)
 {
     DirPartMessage dirPartMessage{};
     // TODO:
     return dirPartMessage;
+}
+
+std::vector<char> DirPartMessage::serialize(DirPartMessage dirPartMessage)
+{
+    std::vector<char> data;
+    // TODO:
+    return data;
+}
+
+Message createMessage(TextMessage textMessage, int sockfd)
+{
+    std::vector<char> messageData = TextMessage::serialize(textMessage);
+    return Message{static_cast<int>(messageData.size()), 
+        Text, sockfd, messageData};
+}
+
+Message createMessage(CommandMessage commandMessage, int sockfd)
+{
+    std::vector<char> messageData = CommandMessage::serialize(commandMessage);
+    return Message{static_cast<int>(messageData.size()), 
+        Command, sockfd, messageData};
+}
+
+Message createMessage(FilePartMessage filePartMessage, int sockfd)
+{
+    std::vector<char> messageData = FilePartMessage::serialize(filePartMessage);
+    return Message{static_cast<int>(messageData.size()), 
+        FilePart, sockfd, messageData};
+}
+
+Message createMessage(DirPartMessage dirPartMessage, int sockfd)
+{
+    std::vector<char> messageData = DirPartMessage::serialize(dirPartMessage);
+    return Message{static_cast<int>(messageData.size()), 
+        DirPart, sockfd, messageData};
 }

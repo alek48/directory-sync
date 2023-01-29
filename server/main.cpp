@@ -1,10 +1,21 @@
 #include "Server.h"
+#include "VaultManager.h"
 #include "Logger.h"
 
-int main()
+int main(int argc, char* argv[])
 {
-    Server server{};
+    if (argc < 2)
+        Logger::LOG(ERROR, "Usage: ./server.out storage_path [port=1515]");
+
+    std::string port = "1515";
+    if (argc == 3)
+        port = argv[2];
     
+    // TODO: validate input
+
+    Server server{port};
+    VaultManager::getInstance()->setStoragePath(argv[1]);
+
     try
     {
         server.init();
