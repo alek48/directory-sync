@@ -27,3 +27,13 @@ std::vector<std::string> getAvailableCommands(Stage stage)
         return std::vector<std::string> {};
     }
 }
+
+std::string stageName(Stage stage)
+{
+    if (stage == Connected)
+        return "Connected";
+    else if (stage == Syncing)
+        return "Syncing";
+    else
+        return "Wrong stage";
+}

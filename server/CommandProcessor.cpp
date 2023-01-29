@@ -4,9 +4,29 @@
 #include "MessageManager.h"
 #include "Logger.h"
 
+void sendHelpMessage(Stage stage, int sockfd, bool wrongCommand = false)
+{
+    TextMessage message{""};
+    if (wrongCommand)
+        message.text += "Incorrect command\n";
+
+    message.text += "Available commands for stage: " + stageName(stage) + '\n';
+
+    for (const auto& command : getAvailableCommands(stage))
+        message.text += command + '\n';
+
+    MessageManager::getInstance()->addMessageOut(createMessage(message, sockfd));
+}
+
 void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& commandMessage)
 {
     Stage clientStage = client.currentStage;
+
+    if (commandMessage.parts.size() == 1 && commandMessage.parts[0] == "help")
+    {
+        sendHelpMessage(clientStage, client.sockfd);
+        return;
+    }
 
     if (clientStage == Connected)
     {
@@ -24,7 +44,7 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
             }
             else
             {
-                // wrong
+                sendHelpMessage(clientStage, client.sockfd, true);
             }
         }
         else if (commandMessage.parts.size() == 2)
@@ -45,6 +65,10 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
 
                 MessageManager::getInstance()->addMessageOut(createMessage(response, client.sockfd));
             }
+            else
+            {
+                sendHelpMessage(clientStage, client.sockfd, true);
+            }
         }
         else if (commandMessage.parts.size() == 3)
         {
@@ -54,27 +78,42 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
 
             if (command == "sync")
             {
-                if (type == "upload")
+                // does vault exist?
+                if (!VaultManager::getInstance()->isCreated(vaultName))
                 {
-
+                    MessageManager::getInstance()->addMessageOut(
+                        createMessage(TextMessage{"Vault " + vaultName + " does not exist"}, client.sockfd));
+                    return;
                 }
-                else if (type == "download")
-                {
 
+                Vault& vault = VaultManager::getInstance()->getVault(vaultName);
+                
+                bool success = vault.sync(client, type);
+
+                if (!success)
+                {
+                    MessageManager::getInstance()->addMessageOut(
+                        createMessage(TextMessage{"Could not start sync with vault: " + vaultName}, client.sockfd));
                 }
                 else
                 {
-                    // wrong type
+                    MessageManager::getInstance()->addMessageOut(
+                        createMessage(TextMessage{"Syncing"}, client.sockfd));
+                }
+
+                if (type != "safe" || type != "force")
+                {
+                    sendHelpMessage(clientStage, client.sockfd, true);
                 }
             }
             else
             {
-                // wrong
+                sendHelpMessage(clientStage, client.sockfd, true);
             }
         }
         else
         {
-            // wrong
+            sendHelpMessage(clientStage, client.sockfd, true);
         }
     }
     else if (clientStage == Syncing)
@@ -94,29 +133,31 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
                 }
                 else
                 {
-                    // wrong option
+                    sendHelpMessage(clientStage, client.sockfd, true);
                 }
             }
             else
             {
-                // wrong command
+                sendHelpMessage(clientStage, client.sockfd, true);
             }
         }
         else if (commandMessage.parts[0].size() == 2)
         {
             if (commandMessage.parts[0] == "list" && 
-                commandMessage.parts[0] == "entries")
+                commandMessage.parts[1] == "entries")
             {
-                
+                // std::vector<DirEntry> allEntries = 
+                // MessageManager::getInstance()->addMessageOut(
+                //     createMessage(DirPartMessage{"Could not start sync with vault: " + vaultName}, client.sockfd));
             }
             else
             {
-                // wrong command
+                sendHelpMessage(clientStage, client.sockfd, true);
             }
         }
         else
         {
-            // wrong command
+            sendHelpMessage(clientStage, client.sockfd, true);
         }
     }
     else

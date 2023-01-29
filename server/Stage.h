@@ -9,3 +9,5 @@ enum Stage
 };
 
 std::vector<std::string> getAvailableCommands(Stage stage);
+
+std::string stageName(Stage stage);

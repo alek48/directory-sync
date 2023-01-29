@@ -102,7 +102,7 @@ void MessageManager::processMessageQueue()
         }
         else if (message.type == DirPart)
         {
-            DirPartMessage dirPartMessage = DirPartMessage::create(message.data);
+            Logger::LOG(ERROR, "Server received dir part from client");
         }
         else
         {
@@ -123,11 +123,9 @@ void appendIntToNetworkData(int val, std::vector<char>& data)
 
 void sendAll(const Message& message)
 {
-    int len = message.data.size();
-
     std::vector<char> headerAndData;
 
-    appendIntToNetworkData(len, headerAndData);
+    appendIntToNetworkData(message.data.size(), headerAndData);
     appendIntToNetworkData(message.type, headerAndData);
 
     for (char c : message.data)
@@ -135,6 +133,7 @@ void sendAll(const Message& message)
         headerAndData.push_back(c);
     }
 
+    int len = headerAndData.size();
     const char* dataStart = &(headerAndData[0]);
     int sockfd = message.sock;
     int total = 0;

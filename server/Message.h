@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Vault.h"
+
 #include <vector>
 #include <string>
 
@@ -43,14 +45,6 @@ struct FilePartMessage
     int fullSize;
     int partSize;
     std::vector<char> partData;
-};
-
-
-struct DirEntry
-{
-    std::string filePath;
-    std::string fileName;
-    int modDate;
 };
 
 struct DirPartMessage
