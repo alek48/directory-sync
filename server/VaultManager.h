@@ -17,9 +17,9 @@ public:
 
     std::vector<std::string> listAllVaults();
     
-    void createVault(std::string name);
-    void openVault(std::string name);
-    void closeVault(std::string name);
+    bool createVault(std::string name);
+    bool openVault(std::string name);
+    bool closeVault(std::string name);
 
     void setStoragePath(std::string storagePath);
 

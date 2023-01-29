@@ -1,4 +1,5 @@
 #include "VaultManager.h"
+#include "Logger.h"
 
 #include <filesystem>
 #include <string>
@@ -28,12 +29,22 @@ std::vector<std::string> VaultManager::listAllVaults()
     return vaults;
 }
 
-void VaultManager::createVault(std::string name)
+bool VaultManager::createVault(std::string name)
 {
-    
+    bool success = false;
+    try
+    {
+        success = fs::create_directory(fs::path(storagePath + name));
+    }
+    catch (...)
+    {
+        Logger::LOG(ERROR, "Failure while creating directory: " + name);
+    }
+    return success;
 }
 
 void VaultManager::setStoragePath(std::string storagePath)
 {
-    this->storagePath = storagePath;
+    storagePath.back() == '/' ? 
+        this->storagePath = storagePath : this->storagePath = storagePath + '/';
 }

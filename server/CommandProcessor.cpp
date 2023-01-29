@@ -36,7 +36,14 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
             else if (commandMessage.parts[0] == "create")
             {
                 std::string vaultName = commandMessage.parts[1];
-                VaultManager::getInstance()->createVault(vaultName);
+                bool success = VaultManager::getInstance()->createVault(vaultName);
+                TextMessage response{};
+                if (success)
+                    response.text = "Vault " + vaultName + " created";
+                else
+                    response.text = "Vault " + vaultName + " could not be created";
+
+                MessageManager::getInstance()->addMessageOut(createMessage(response, client.sockfd));
             }
         }
         else if (commandMessage.parts.size() == 3)
