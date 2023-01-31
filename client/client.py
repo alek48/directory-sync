@@ -36,7 +36,26 @@ class Message:
         elif self.type == MESSAGE_TYPES['FilePart']:
             pass
         elif self.type == MESSAGE_TYPES['DirPart']:
-            pass
+            numOfAllEntries = bytesToInt(self.data[0:4])
+            numOfEntries = bytesToInt(self.data[4:8])
+            entries = []
+            dataIdx = 8
+            for i in range(numOfEntries):
+                filePath = ''
+                modDate = ''
+
+                while dataIdx < len(data) and bytesToString(self.data[dataIdx:dataIdx+1]) != ';':
+                    filePath += bytesToString(self.data[dataIdx:dataIdx+1])
+                    dataIdx += 1
+                dataIdx += 1
+
+                modDate = bytesToInt(self.data[dataIdx:dataIdx+4])
+                dataIdx += 4
+
+                entries.append(DirEntry(filePath, modDate))
+
+            return DirPartMessage(numOfAllEntries, numOfEntries, entries)
+
 
 class TextMessage:
     def __init__(self, m_text):
@@ -46,6 +65,9 @@ class TextMessage:
         b_data = stringToBytes(self.text)
         return Message(len(b_data), MESSAGE_TYPES['Text'], b_data)
 
+    def print(self):
+        print(self.text)
+
 class CommandMessage:
     def __init__(self, m_text):
         self.parts = m_text
@@ -53,6 +75,27 @@ class CommandMessage:
     def createMessage(self):
         b_data = stringToBytes(self.parts)
         return Message(len(b_data), MESSAGE_TYPES['Command'], b_data)
+    
+    def print(self):
+        print(self.parts)
+
+class DirPartMessage:
+    def __init__(self, numOfAllEntries, numOfEntries, entries):
+        self.numOfAllEntries = numOfAllEntries
+        self.numOfEntries = numOfEntries
+        self.entries = entries
+
+    def print(self):
+        for entry in self.entries:
+            entry.print()
+
+class DirEntry:
+    def __init__(self, filePath, modDate):
+        self.filePath = filePath
+        self.modDate = modDate
+    
+    def print(self):
+        print(self.filePath, ';', self.modDate)
 
 # data should be max 4096 bytes
 def createMessage(type, data):
@@ -80,6 +123,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         command = CommandMessage(user_input)
 
         s.sendall(serializeMessage(command.createMessage()))
+        print("sent")
 
         data = s.recv(4096+4+4)
         message = readMessage(data)
@@ -89,7 +133,20 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             print("Error: not a text message")
         
         if (typedMessage.text == "Syncing"):
-            syncing = False ###### False for testing ######
+            syncing = True
 
-        print(typedMessage.text)
+        typedMessage.print()
+
+    while syncing:
+        user_input = input()
+        command = CommandMessage(user_input)
+
+        s.sendall(serializeMessage(command.createMessage()))
+        print("sent")
+
+        data = s.recv(4096+4+4)
+        message = readMessage(data)
+        typedMessage = message.getTypeMessage()
+
+        typedMessage.print()
 

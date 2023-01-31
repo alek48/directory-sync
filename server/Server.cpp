@@ -204,6 +204,7 @@ void Server::run()
                         close(sender_fd);
                         pfds.erase(std::next(pfds.begin(), i));
                         ClientManager::getInstance()->removeClientOnSock(pfds[i].fd);
+                        // TODO: remove user
                     }
                     else
                     {

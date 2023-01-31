@@ -32,7 +32,7 @@ private:
 
     std::vector<User>::iterator getUser(const Client& client);
 
-    std::vector<User> users;
+    std::vector<User> users; // TODO: when users move Client loses pointer
     std::string name;
     std::string workingDirPath;
 };

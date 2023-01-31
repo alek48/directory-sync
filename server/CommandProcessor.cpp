@@ -53,6 +53,8 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
         {
             if (commandMessage.parts[0] == "list")
             {
+                MessageManager::getInstance()->addMessageOut(
+                            createMessage(TextMessage{"Listing more pages not implemented!"}, client.sockfd));
                 std::string page = commandMessage.parts[1];
             }
             else if (commandMessage.parts[0] == "create")
@@ -167,9 +169,15 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
             if (commandMessage.parts[0] == "list" && 
                 commandMessage.parts[1] == "entries")
             {
-                // std::vector<DirEntry> allEntries = 
-                // MessageManager::getInstance()->addMessageOut(
-                //     createMessage(DirPartMessage{"Could not start sync with vault: " + vaultName}, client.sockfd));
+                std::vector<DirEntry> allEntries = client.user->vault->getEntries();
+                MessageManager::getInstance()->addMessageOut(
+                            createMessage(DirPartMessage
+                                {
+                                    static_cast<int>(allEntries.size()),
+                                    static_cast<int>(allEntries.size()),
+                                    allEntries
+                                },
+                                client.sockfd));
             }
             else
             {

@@ -3,6 +3,7 @@
 #include "ClientManager.h"
 #include "Message.h"
 #include "Logger.h"
+#include "helpers.h"
 
 #include <netinet/in.h>
 
@@ -115,14 +116,6 @@ void MessageManager::processMessageQueue()
 
         messagesIn.pop();
     }
-}
-
-void appendIntToNetworkData(int val, std::vector<char>& data)
-{
-    int nVal = htonl(val);
-    char* networkVal = reinterpret_cast<char*>(&nVal);
-    for (int i = 0; i < 4; i++)
-        data.push_back(networkVal[i]);
 }
 
 void sendAll(const Message& message)

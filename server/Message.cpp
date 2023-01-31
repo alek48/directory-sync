@@ -1,5 +1,6 @@
 #include "Message.h"
 #include "Vault.h"
+#include "helpers.h"
 
 #include <vector>
 #include <string>
@@ -74,7 +75,17 @@ DirPartMessage DirPartMessage::create(std::vector<char>& data)
 std::vector<char> DirPartMessage::serialize(DirPartMessage dirPartMessage)
 {
     std::vector<char> data;
-    // TODO:
+
+    appendIntToNetworkData(dirPartMessage.numOfAllEntries, data);
+    appendIntToNetworkData(dirPartMessage.numOfEntries, data);
+
+    for (const DirEntry& entry : dirPartMessage.entries)
+    {
+        appendStringToNetworkData(entry.filePath, data);
+        data.push_back(';');
+        appendIntToNetworkData(entry.modDate, data);
+        data.push_back(' '); // entry end
+    }
     return data;
 }
 
