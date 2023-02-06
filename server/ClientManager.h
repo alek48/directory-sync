@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vector>
+#include "Client.h"
 
-class Client;
+#include <vector>
 
 class ClientManager // singleton
 {
@@ -15,8 +15,9 @@ public:
     void operator=(const ClientManager &) = delete;
     static ClientManager *getInstance();
 
-    void addClient(Client client);
+    void addClient(int sockfd, std::string address);
     void removeClientOnSock(int sockfd);
+    std::vector<Client>& getClients();
     Client& getClientOnSock(int sockfd);
 
 private:

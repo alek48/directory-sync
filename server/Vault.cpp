@@ -2,9 +2,11 @@
 #include "VaultManager.h"
 #include "User.h"
 #include "Client.h"
+#include "Logger.h"
 
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 #include <string>
 #include <vector>
@@ -34,6 +36,28 @@ int getModDateEpoch(const fs::directory_entry& entry)
 
 }
 
+bool createDirectoryRecuresive(const std::string& dirName)
+{
+    if (!fs::create_directories(dirName))
+    {
+        if (fs::exists(dirName))
+        {
+            return true;    // directory already exists
+        }
+
+        Logger::LOG(ERROR, "createDirectoryRecuresive Failed to create " + dirName);
+        return false;
+    }
+    return true;
+}
+
+int getFileSize(std::string filename)
+{
+    struct stat stat_buf;
+    int rc = stat(filename.c_str(), &stat_buf);
+    return rc == 0 ? stat_buf.st_size : -1;
+}
+
 Vault::Vault(std::string name) : 
     name {name},
     workingDirPath {VaultManager::getInstance()->storagePath + name + "/"}
@@ -44,13 +68,14 @@ Vault::Vault(std::string name) :
 std::vector<std::string> Vault::getFiles() const
 {
     std::vector<std::string> files;
-    std::string path = VaultManager::getInstance()->storagePath;
+    std::string vaultPath = VaultManager::getInstance()->storagePath + name;
 
-    for (const auto& entry : fs::recursive_directory_iterator(path+name))
+    for (const auto& entry : fs::recursive_directory_iterator(vaultPath))
     {   
         if (!fs::is_directory(entry.status())) // only files
         {
-            files.push_back(entry.path());
+            std::string serverRelativePath = entry.path();
+            files.push_back(serverRelativePath.substr(vaultPath.size()+1, -1));
         }
     }
 
@@ -60,13 +85,14 @@ std::vector<std::string> Vault::getFiles() const
 std::vector<DirEntry> Vault::getEntries() const
 {
     std::vector<DirEntry> entries;
-    std::string path = VaultManager::getInstance()->storagePath;
-    for (const auto& entry : fs::recursive_directory_iterator(path+name))
+    std::string vaultPath = VaultManager::getInstance()->storagePath + name;
+    for (const auto& entry : fs::recursive_directory_iterator(vaultPath))
     {   
         if (!fs::is_directory(entry.status())) // only files
         {
             DirEntry file;
-            file.filePath = entry.path();
+            std::string serverRelativePath = entry.path();
+            file.filePath = serverRelativePath.substr(vaultPath.size()+1, -1);
             file.modDate = getModDateEpoch(entry);
 
             entries.push_back(file);
@@ -77,15 +103,23 @@ std::vector<DirEntry> Vault::getEntries() const
     return entries;
 }
 
-std::vector<User>::iterator Vault::getUser(const Client& client)
+std::vector<User*>::iterator Vault::getUser(const User& user)
 {
     return std::find_if(users.begin(), users.end(), 
-        [&client](const User& user){return user.client == &client;});
+        [&user](const User* u){return u == &user;});
 }
 
 bool Vault::isClientConnected(const Client& client)
 {
-    return getUser(client) != users.end();
+    if (client.isConnected())
+        return client.user->vault == this;
+    else
+        return false;
+}
+
+void Vault::removeUser(const User& user)
+{
+    users.erase(getUser(user));
 }
 
 bool Vault::sync(Client& client, const std::string& syncOption)
@@ -95,16 +129,16 @@ bool Vault::sync(Client& client, const std::string& syncOption)
 
     if (syncOption == "safe")
     {
-        users.emplace_back(User{client, this});
-        client.user = &(users.back());
+        client.user = std::make_unique<User>(client, this);
+        users.push_back(client.user.get());
         return true;
     }
     else if (syncOption == "force")
     {
         if (users.size() == 0)
         {
-            users.emplace_back(User{client, this, true});
-            client.user = &(users.back());
+            client.user = std::make_unique<User>(client, this, true);
+            users.push_back(client.user.get());
             return true;
         }
         return false;
@@ -116,11 +150,56 @@ bool Vault::sync(Client& client, const std::string& syncOption)
 int Vault::createFile(const std::string& relativePath) const
 {
     std::string path = workingDirPath + relativePath;
-    return open(path.c_str(), O_WRONLY|O_CREAT|O_TRUNC);
+    createDirectoryRecuresive(path.substr(0, path.find_last_of("/")));
+    return open(path.c_str(), O_WRONLY|O_CREAT|O_TRUNC, S_IRWXU);
 }
 
-int Vault::openFile(const std::string& relativePath) const
+int Vault::openFile(const std::string& relativePath, int& fullFilesize) const
 {
     std::string path = (workingDirPath + relativePath);
+    fullFilesize = getFileSize(path);
     return open(path.c_str(), O_RDONLY);
+}
+
+int Vault::deleteFile(const std::string& relativePath) const
+{
+    std::string path = (workingDirPath + relativePath);
+    return unlink(path.c_str());
+
+    // TODO: remove empty directories recursively
+}
+
+bool Vault::uploadFilePart(int sockfd, std::vector<char> data)
+{
+    int total {0};
+    while (total < static_cast<int>(data.size()))
+    {
+        int n = write(sockfd, data.data(), data.size());
+        
+        if (n == -1)
+        {
+            Logger::LOG(ERROR, "Failed while writing file");
+            return false;
+        }
+        else if (n == 0)
+        {
+            Logger::LOG(ERROR, "Write to file returned 0");
+            return false;
+        }
+        else
+            total += n;
+    }
+
+    return true;
+}
+
+std::vector<char> Vault::downloadFilePart(int sockfd)
+{
+    std::vector<char> data;
+    char buf[4096];
+    int n = read(sockfd, &buf, 4096);
+    for (int i = 0; i < n; i++)
+        data.push_back(buf[i]);
+
+    return data;
 }

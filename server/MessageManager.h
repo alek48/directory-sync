@@ -20,7 +20,7 @@ public:
     static MessageManager *getInstance();
 
     void processMessageData(int sockfd, char* buffData, int buffLen);
-    void processMessageQueue();
+    void processMessageQueues();
     void addMessageOut(Message message);
     void sendMessageToSock(std::vector<int> sockets);
 

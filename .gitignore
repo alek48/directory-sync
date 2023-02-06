@@ -1,2 +1,3 @@
 *.out
-/vaults
+vaults/
+__pycache__/

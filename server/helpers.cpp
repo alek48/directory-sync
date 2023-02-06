@@ -15,3 +15,8 @@ void appendStringToNetworkData(const std::string& str, std::vector<char>& data)
     for (char c : str)
         data.push_back(c);
 }
+
+int readIntFromNetworkData(const char* data)
+{
+    return ntohl(*reinterpret_cast<const int*>(data));
+}

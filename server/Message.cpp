@@ -54,14 +54,28 @@ std::vector<char> CommandMessage::serialize(CommandMessage commandMessage)
 FilePartMessage FilePartMessage::create(std::vector<char>& data)
 {
     FilePartMessage filePartMessage{};
-    // TODO:
+    
+    const char* d = data.data();
+    filePartMessage.fullSize = readIntFromNetworkData(d);
+    d += 4;
+    filePartMessage.partSize = readIntFromNetworkData(d);
+    d += 4;
+
+    for (size_t i = 8; i < data.size(); i++)
+        filePartMessage.partData.push_back(data[i]);
+
     return filePartMessage;
 }
 
 std::vector<char> FilePartMessage::serialize(FilePartMessage filePartMessage)
 {
     std::vector<char> data;
-    // TODO:
+    appendIntToNetworkData(filePartMessage.fullSize, data);
+    appendIntToNetworkData(filePartMessage.partSize, data);
+
+    for (char c : filePartMessage.partData)
+        data.push_back(c);
+
     return data;
 }
 
@@ -69,6 +83,7 @@ DirPartMessage DirPartMessage::create(std::vector<char>& data)
 {
     DirPartMessage dirPartMessage{};
     // TODO:
+    // but server doesn't need it
     return dirPartMessage;
 }
 
@@ -82,9 +97,9 @@ std::vector<char> DirPartMessage::serialize(DirPartMessage dirPartMessage)
     for (const DirEntry& entry : dirPartMessage.entries)
     {
         appendStringToNetworkData(entry.filePath, data);
-        data.push_back(';');
+        data.push_back('|');
         appendIntToNetworkData(entry.modDate, data);
-        data.push_back(' '); // entry end
+        data.push_back('|'); // entry end
     }
     return data;
 }

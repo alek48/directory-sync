@@ -180,7 +180,7 @@ void Server::run()
                     
                     pollfd newPfd{newfd, POLLIN | POLLOUT};
                     pfds.push_back(newPfd);
-                    ClientManager::getInstance()->addClient(Client{newfd, remoteIP});
+                    ClientManager::getInstance()->addClient(newfd, remoteIP);
                     Logger::LOG(INFO, "server: new connection from: " + std::string{remoteIP});
                 }
                 else
@@ -214,7 +214,7 @@ void Server::run()
             }
         }
 
-        MessageManager::getInstance()->processMessageQueue();
+        MessageManager::getInstance()->processMessageQueues();
         
         if (!MessageManager::getInstance()->isMessageOutEmpty())
             MessageManager::getInstance()->sendMessageToSock(getSocketsReadyToWrite(pfds));

@@ -14,9 +14,9 @@ ClientManager *ClientManager::getInstance()
     return clientManager_;
 }
 
-void ClientManager::addClient(Client client)
+void ClientManager::addClient(int sockfd, std::string address)
 {
-    clients.push_back(client);
+    clients.emplace_back(sockfd, address);
 }
 
 Client& ClientManager::getClientOnSock(int sockfd)
@@ -27,6 +27,11 @@ Client& ClientManager::getClientOnSock(int sockfd)
 void ClientManager::removeClientOnSock(int sockfd)
 {
     clients.erase(getInter(sockfd));
+}
+
+std::vector<Client>& ClientManager::getClients()
+{
+    return clients;
 }
 
 std::vector<Client>::iterator ClientManager::getInter(int sockfd)

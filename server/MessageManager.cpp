@@ -22,9 +22,9 @@ MessageManager *MessageManager::getInstance()
 void readMessageHeader(Message& message, char* data)
 {
     // cast char* to int* and read bytes as int
-    message.len = ntohl(*reinterpret_cast<int*>(data));
+    message.len = readIntFromNetworkData(data);
     // move by 4 bytes
-    message.type = static_cast<MessageType>(ntohl(*reinterpret_cast<int*>(data+4)));
+    message.type = static_cast<MessageType>(readIntFromNetworkData(data+4));
 }
 
 int readMessageData(Message& message, char* data, int dataLen)
@@ -84,7 +84,7 @@ void MessageManager::processMessageData(int sockfd, char* buffData, int buffLen)
     }
 }
 
-void MessageManager::processMessageQueue()
+void MessageManager::processMessageQueues()
 {
     while (!messagesIn.empty()) // input messages
     {
@@ -103,7 +103,7 @@ void MessageManager::processMessageQueue()
         }
         else if (message.type == FilePart)
         {
-            FilePartMessage filePartMessage = FilePartMessage::create(message.data);
+            client.user->saveNextFilePart(FilePartMessage::create(message.data));
         }
         else if (message.type == DirPart)
         {
@@ -115,6 +115,22 @@ void MessageManager::processMessageQueue()
         }
 
         messagesIn.pop();
+    }
+
+    // send parts
+    for (const Client& client : ClientManager::getInstance()->getClients())
+    {
+        if (client.user)
+        {
+            if (client.user->currentOperation == Listing)
+            {
+                client.user->sendNextDirPart();
+            }
+            else if (client.user->currentOperation == Downloading)
+            {
+                client.user->sendNextFilePart();
+            }
+        }
     }
 }
 

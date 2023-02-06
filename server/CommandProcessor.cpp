@@ -130,7 +130,7 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
                 std::string filepath = commandMessage.parts[2];
                 if (commandMessage.parts[1] == "download")
                 {
-                    if (client.user->openFile(filepath))
+                    if (client.user->startDownload(filepath))
                     {
                         MessageManager::getInstance()->addMessageOut(
                             createMessage(TextMessage{"OK"}, client.sockfd));
@@ -138,12 +138,12 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
                     else
                     {
                         MessageManager::getInstance()->addMessageOut(
-                            createMessage(TextMessage{"Could not open file " + filepath}, client.sockfd));
+                            createMessage(TextMessage{"Could not start download"}, client.sockfd));
                     }
                 }
                 else if (commandMessage.parts[1] == "upload")
                 {
-                    if (client.user->createFile(filepath))
+                    if (client.user->startUpload(filepath))
                     {
                         MessageManager::getInstance()->addMessageOut(
                             createMessage(TextMessage{"OK"}, client.sockfd));
@@ -151,7 +151,7 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
                     else
                     {
                         MessageManager::getInstance()->addMessageOut(
-                            createMessage(TextMessage{"Could not create file" + filepath}, client.sockfd));
+                            createMessage(TextMessage{"Could not start upload"}, client.sockfd));
                     }
                 }
                 else
@@ -169,15 +169,16 @@ void CommandProcessor::executeCommandMessage(Client& client, CommandMessage& com
             if (commandMessage.parts[0] == "list" && 
                 commandMessage.parts[1] == "entries")
             {
-                std::vector<DirEntry> allEntries = client.user->vault->getEntries();
-                MessageManager::getInstance()->addMessageOut(
-                            createMessage(DirPartMessage
-                                {
-                                    static_cast<int>(allEntries.size()),
-                                    static_cast<int>(allEntries.size()),
-                                    allEntries
-                                },
-                                client.sockfd));
+                if (client.user->startListEntries())
+                {
+                    MessageManager::getInstance()->addMessageOut(
+                        createMessage(TextMessage{"OK"}, client.sockfd));
+                }
+                else
+                {
+                    MessageManager::getInstance()->addMessageOut(
+                        createMessage(TextMessage{"Could not list entries"}, client.sockfd));
+                }
             }
             else
             {

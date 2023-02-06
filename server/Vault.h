@@ -26,13 +26,16 @@ public:
     friend class User;
 
 private:
-    int createFile(const std::string& path) const;
-    int openFile(const std::string& path) const;
-    bool uploadFilePart(const std::string& path, std::vector<char> data);
+    int createFile(const std::string& relativePath) const;
+    int openFile(const std::string& relativePath, int& fullFilesize) const;
+    int deleteFile(const std::string& relativePath) const;
+    bool uploadFilePart(int sockfd, std::vector<char> data);
+    std::vector<char> downloadFilePart(int sockfd);
 
-    std::vector<User>::iterator getUser(const Client& client);
+    std::vector<User*>::iterator getUser(const User& user);
+    void removeUser(const User& user);
 
-    std::vector<User> users; // TODO: when users move Client loses pointer
+    std::vector<User*> users; // TODO: when users move Client loses pointer
     std::string name;
     std::string workingDirPath;
 };
