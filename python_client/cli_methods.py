@@ -79,6 +79,6 @@ def validate_port(port):
         port = int(port)
     except ValueError:
         return False
-    if (0 > port >= 65535):
+    if not (0 < port <= 65535):
         return False
     return True

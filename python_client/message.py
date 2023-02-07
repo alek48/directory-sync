@@ -24,7 +24,7 @@ class Message:
     def set_message(self, new_message):
         """
         Sets the message content
-        :param new_message:
+        :param new_message: contents of message
         """
         self.message = new_message
 
@@ -46,3 +46,9 @@ class Message:
             return struct.pack(f">ii", 0, self.m_type)  # TODO: better error handling
         m_len = len(encoded_message)
         return struct.pack(f">ii{m_len}s", m_len, self.m_type, encoded_message)
+
+    def decode_text_message(self):
+        """
+        Decodes message field from bytes into text string
+        """
+        self.set_message(self.message.decode("UTF-8"))
