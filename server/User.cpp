@@ -79,7 +79,7 @@ bool User::startDownload(const std::string& relativePath) // path relative to va
     }
 
     std::vector<std::string> files = vault->getFiles();
-    auto found = std::find(files.begin(), files.end(), vault->workingDirPath + relativePath);
+    auto found = std::find(files.begin(), files.end(), relativePath);
     if (found == files.end()) // there is no such file
         return false;
 

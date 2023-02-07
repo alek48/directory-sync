@@ -141,19 +141,19 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         typedMessage.print()
 
     while syncing:
-        # user_input = "list entries"
-        # command = CommandMessage(user_input)
+        user_input = "list entries"
+        command = CommandMessage(user_input)
 
-        # s.sendall(serializeMessage(command.createMessage()))
-        # print("sent")
+        s.sendall(serializeMessage(command.createMessage()))
+        print("sent")
 
-        # data = s.recv(4096+4+4)
+        data = s.recv(4096+4+4)
 
-        # message = readMessage(data) # OK
+        message = readMessage(data) # OK
 
-        # data = s.recv(4096+4+4)
-        # message = readMessage(data)
-        # entries = message.getTypeMessage()
+        data = s.recv(4096+4+4)
+        message = readMessage(data)
+        entries = message.getTypeMessage()
         
         # TODO
         # compare entries with local entries;
@@ -166,23 +166,23 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         # file not present in remote storage => request upload
         # file present in remote storage but older => request upload (only when sync force)
 
-        # for entry in entries.entries:
-        #     command = CommandMessage("request download " + entry.filePath)
-        #     s.sendall(serializeMessage(command.createMessage()))
+        for entry in entries.entries:
+            command = CommandMessage("request download " + entry.filePath)
+            s.sendall(serializeMessage(command.createMessage()))
 
-        #     data = s.recv(4096+4+4)
-        #     message = readMessage(data)
-        #     textMessage = message.getTypeMessage()
-        #     if textMessage.text == "OK":
-        #         downloadFile()
+            data = s.recv(4096+4+4)
+            message = readMessage(data)
+            textMessage = message.getTypeMessage()
+            if textMessage.text == "OK":
+                downloadFile()
 
-        command = CommandMessage("request upload " + "b/file.txt")
-        s.sendall(serializeMessage(command.createMessage()))
-        data = s.recv(4096+4+4)
+        # command = CommandMessage("request upload " + "b/file.txt")
+        # s.sendall(serializeMessage(command.createMessage()))
+        # data = s.recv(4096+4+4)
 
-        file_data = "asdsbbbbbbbbbbbbbbbbeeeeeeeeeeasdf"
-        d = intToBytes(len(file_data)) + intToBytes(len(file_data)) + stringToBytes(file_data)
-        message = Message(len(d), MESSAGE_TYPES['FilePart'], d)
-        s.sendall(serializeMessage(message))
+        # file_data = "asdsbbbbbbbbbbbbbbbbeeeeeeeeeeasdf"
+        # d = intToBytes(len(file_data)) + intToBytes(len(file_data)) + stringToBytes(file_data)
+        # message = Message(len(d), MESSAGE_TYPES['FilePart'], d)
+        # s.sendall(serializeMessage(message))
 
 
