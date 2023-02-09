@@ -26,4 +26,4 @@ Każdy klient łączy się z serwerem; jako argumenty przy uruchamianiu podawany
 
 Obsługa synchronizacji następuje po stronie klienta z poziomu CLI. Po połączeniu z serwerem użytkownik wybiera katalog ("VAULT"), do którego chce się synchronizować.
 
-Po połączeniu z vault'em, klient może wybierać pliki do wysłania zub ściągnięcia z serwera.
+Po połączeniu z vault'em, klient może wybierać pliki do wysłania lub ściągnięcia z serwera.
