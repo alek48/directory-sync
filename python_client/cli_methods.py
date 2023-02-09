@@ -5,11 +5,14 @@ import re
 def get_sync_directory():
     """
     Asks user for directory path, validates it, and returs it
+
     :return: directory path
     """
     while True:
         dir_path = input("Please enter path to the directory you want to share:\n"
                          "->")
+        if dir_path[-1] != "/":
+            dir_path += "/"
         if validate_directory(dir_path):
             return dir_path
 
@@ -17,24 +20,28 @@ def get_sync_directory():
 def validate_directory(directory):
     """
     Checks if directory exists and asks user for confirmation if directory is not empty
+
     :param directory: path to directory
     :return: is validated? bool
     """
     if path.isdir(directory):
         if listdir(directory):
             if input("This directory already contains some files, "
-                     "this data might be lost. Do you want to continue? [y/n]\n"
+                     "some data might be lost. Do you want to continue? [y/n]\n"
                      "->") == "y":
                 return True
             else:
+                print("Returning to directory selection...")
                 return False
         return True
+    print("Invalid directory path, returning to directory selection...")
     return False
 
 
 def get_server_ip():
     """
     Asks user for IPv4 and port of the target server, then validates them
+
     :return: tuple (IPv4, port)
     """
     while True:
@@ -55,6 +62,7 @@ def get_server_ip():
 def validate_ip(addr):
     """
     Checks if given string is a valid IPv4 address
+
     :param addr: string to test
     :return: Is valid? bool
     """
@@ -63,7 +71,6 @@ def validate_ip(addr):
         return False
     for elem in addr.split("."):
         part = int(elem)
-        print(part)
         if not 0 <= part <= 255:
             return False
     return True
@@ -72,6 +79,7 @@ def validate_ip(addr):
 def validate_port(port):
     """
     Checks if given string is a valid port number
+
     :param port: string to check
     :return: Is valid? bool
     """

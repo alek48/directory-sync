@@ -15,7 +15,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     with conn:
         print(f"Connected by {addr}")
         msg = m.Message()
-        msg.set_message("test text messageąęó hehe")
+        msg.set_message("test text messageąęó abcd")
         msg.set_type(m.MessageType.Text)
         data = msg.serialize()
         conn.sendall(data)

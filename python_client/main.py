@@ -3,55 +3,73 @@ import os
 import message as m
 import cli_methods as cli
 from datetime import datetime
+from time import sleep, time
 
 
 def main():
-    """
-    """
     sync_dir, sock = initialize_client()
     if sync_dir[-1] != "/":
         sync_dir += "/"
     print("Connected to remote vault. Type 'help' to get a list of available commands. Type 'quit()' to exit")
-    while True:
-        command = input("->")
-        if command == "quit()":
-            return
-        else:
-            msg_out = prepare_command(command)
-            send_message(sock, msg_out)
-            if "list entries" in command:
-                resp = receive_message(sock)
-                print(resp.message)
-                if resp.message == "OK":
-                    receive_dir_message(sock)
-
-            elif "request download" in command:
-                command = command.split(" ")
-                if len(command) == 3:
-                    f_path = sync_dir + command[2]
-                    resp = receive_message(sock)
-                    print(resp.message)
-                    if resp.message == "OK":
-                        receive_file(sock, f_path)
+    status = "connected"
+    try:
+        while True:
+            command = input("->")
+            if command == "quit()":
+                sock.close()
+                return
+            elif command == "auto()":
+                if status == "synced":
+                    print("Not implemented")
                 else:
-                    resp = receive_message(sock)
-                    print(resp.message)
-
-            elif "request upload" in command:
-                command = command.split(" ")
-                if len(command) == 3:
-                    f_path = sync_dir + command[2]
-                    resp = receive_message(sock)
-                    print(resp.message)
-                    if resp.message == "OK":
-                        send_file(sock, f_path)
-                else:
-                    resp = receive_message(sock)
-                    print(resp.message)
-
+                    print("Not synced to a vault, cannot auto()")
             else:
-                resp = receive_message(sock)
-                print(resp.message)
+                msg_out = prepare_command(command)
+                send_message(sock, msg_out)
+                if "list entries" in command:
+                    resp = receive_message(sock)
+                    if resp.message == "OK":
+                        receive_dir_message(sock)
+
+                elif "request download" in command:
+                    command = command.split(" ")
+                    if len(command) == 3:
+                        f_path = sync_dir + command[2]
+                        resp = receive_message(sock)
+                        if resp.message == "OK":
+                            receive_file(sock, f_path)
+                        else:
+                            resp = receive_message(sock)
+                            print(resp.message)
+                    else:
+                        resp = receive_message(sock)
+                        print(resp.message)
+
+                elif "request upload" in command:
+                    command = command.split(" ")
+                    if len(command) == 3:
+                        f_path = sync_dir + command[2]
+                        if not os.path.isfile(f_path):
+                            print("This file does not exist locally")
+                            continue
+                        resp = receive_message(sock)
+                        if resp.message == "OK":
+                            send_file(sock, f_path)
+                        else:
+                            resp = receive_message(sock)
+                            print(resp.message)
+                    else:
+                        resp = receive_message(sock)
+                        print(resp.message)
+
+                else:
+                    resp = receive_message(sock)
+                    if resp.message == "Syncing":
+                        status = "synced"
+                    print(resp.message)
+                    print("Type 'auto()' to start automatic syncing")
+    except socket.timeout or ConnectionAbortedError:
+        print("Server is not responding or has shut down, exiting...")
 
 
 def initialize_client():
@@ -65,6 +83,7 @@ def initialize_client():
     directory = cli.get_sync_directory()
     print("Directory set, connecting to server...")
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(10)
     while True:
         ip_addr, port = cli.get_server_ip()
         try:
@@ -77,26 +96,6 @@ def initialize_client():
     print("Initialization complete.\n"
           "==========")
     return directory, s
-
-
-def find_files_to_update(directory_path, compared_timestamp):
-    """
-    Recursively searches the directory and returns list of all files edited more recently than given timestamp
-
-    :param directory_path: directory to search
-    :param compared_timestamp: timestamp to compare
-    :return: list of files
-    """
-    list_of_files = []
-    directory_contents = os.listdir(path=directory_path)
-    for entry in directory_contents:
-        full_path = directory_path+entry
-        if os.path.getmtime(full_path) > compared_timestamp:
-            if os.path.isfile(full_path):
-                list_of_files.append(full_path)
-            if os.path.isdir(full_path):
-                list_of_files += find_files_to_update(full_path, compared_timestamp)
-    return list_of_files
 
 
 def send_message(sock, msg):
@@ -123,7 +122,6 @@ def receive_message(sock):
     message_size = int.from_bytes(data[:4], "big")
     while len(data) < 8+message_size:
         data += sock.recv(8+message_size-len(data))
-    print(data)
     new_message = m.Message()
     type_id = int.from_bytes(data[4:8], "big")
     new_message.set_type(m.MessageType(type_id))
@@ -133,11 +131,12 @@ def receive_message(sock):
     return new_message
 
 
-def receive_dir_message(sock):
+def receive_dir_message(sock, to_cli=True):
     """
     Receive DirPart message and print it
 
     :param sock: socket to receive message from
+    :param to_cli: should the message be printed out in cli
     """
     data = b''
     received_entries = 0
@@ -148,18 +147,22 @@ def receive_dir_message(sock):
         data += temp_message.message[8:]
         if received_entries == total_entries:
             break
-    text = convert_dir_data_to_text(data)
-    if text:
-        print(text)
+    if to_cli:
+        text = convert_dir_data_to_text(data)
+        if text:
+            print(text)
+        else:
+            print("This directory is empty")
     else:
-        print("This directory is empty")
+        return convert_dir_data_to_text(data, False)
 
 
-def convert_dir_data_to_text(data):
+def convert_dir_data_to_text(data, readable_date=True):
     """
     convert DirPart bytes data into string
 
     :param data: data of DirPart
+    :param readable_date: should the timestamp be converted to readable date
     :return: data converted to readable string
     """
     out_text = ""
@@ -168,7 +171,10 @@ def convert_dir_data_to_text(data):
     for file, binary_timestamp in zip(data_iter, data_iter):
         out_text += file.decode("UTF-8")
         ts = int.from_bytes(binary_timestamp, "big")
-        out_text += str(datetime.fromtimestamp(ts).strftime(' - %Y-%m-%d %H:%M:%S\n'))
+        if readable_date:
+            out_text += str(datetime.fromtimestamp(ts).strftime(' - %Y-%m-%d %H:%M:%S\n'))
+        else:
+            out_text += "|"+str(ts)+"\n"
     return out_text
 
 
@@ -205,14 +211,15 @@ def send_file(sock, absolute_path):
     with open(absolute_path, 'rb') as f:
         while True:
             data_part = f.read(4096-16)
-            if not data_part:
-                break
             chunk_size = len(data_part).to_bytes(4, "big")
             chunk_data = file_size+chunk_size+data_part
             msg = m.Message()
             msg.set_type(m.MessageType.FilePart)
             msg.set_message(chunk_data)
             send_message(sock, msg)
+            if not data_part:
+                break
+    os.utime(absolute_path, (time(), time()))
 
 
 def prepare_command(comm):
@@ -226,6 +233,94 @@ def prepare_command(comm):
     msg_out.set_type(m.MessageType.Command)
     msg_out.set_message(comm.strip())
     return msg_out
+
+
+def autosync_loop(sock, dir_path):
+    """
+    Automatically syncs local and remote directory
+
+    :param sock: socket with server connection
+    :param dir_path: path to local directory
+    """
+    while True:
+        sleep(5)
+        local_files = find_all_local_files(dir_path)
+        msg_out = prepare_command("list entries")
+        send_message(sock, msg_out)
+        resp = receive_message(sock)
+        if resp.message == "OK":
+            remote_files = receive_dir_message(sock, to_cli=False).strip()
+            remote_files = [x.split("|") for x in remote_files.split("\n")]
+            remote_files = [[x[0], float(x[1])] for x in remote_files]
+        else:
+            continue
+        local_files = iter(local_files)
+        remote_files = iter(remote_files)
+        files_to_push = []
+        files_to_pull = []
+        try:
+            f_local = next(local_files)
+            f_remote = next(remote_files)
+            while True:
+                if f_local[0] == f_remote[0]:
+                    if f_local[1] - f_remote[1] > 1:
+                        files_to_push.append(f_local[0])
+                    elif f_local[1] - f_remote[1] < 1:
+                        files_to_pull.append(f_remote[0])
+                    f_remote = next(remote_files)
+                    f_local = next(local_files)
+                elif f_local[0] < f_remote[0]:
+                    files_to_push.append(f_local[0])
+                    f_local = next(local_files)
+                else:
+                    while f_local[0] > f_remote[0]:
+                        files_to_pull.append(f_remote[0])
+                        f_remote = next(remote_files)
+        except StopIteration:
+            pass
+        for f in local_files:
+            files_to_push.append(f)
+        for f in remote_files:
+            files_to_pull.append(f)
+
+        for file in files_to_push:
+            msg_out = prepare_command("request upload "+file)
+            send_message(sock, msg_out)
+            resp = receive_message(sock)
+            if resp.message == "OK":
+                send_file(sock, dir_path+file)
+            else:
+                pass
+            sleep(1)
+
+        for file in files_to_pull:
+            msg_out = prepare_command("request download "+file)
+            send_message(sock, msg_out)
+            resp = receive_message(sock)
+            if resp.message == "OK":
+                receive_file(sock, dir_path+file)
+            else:
+                pass
+            sleep(1)
+
+
+def find_all_local_files(directory_path, __recursive_path=""):
+    """
+    Given a directory path, returns a list of all files in that directory and sub-directories
+
+    :param directory_path: path to the directory
+    :param __recursive_path: used in recursive calls, do not change
+    :return: list of pairs [relative path, last file edit time]
+    """
+    list_of_files = []
+    directory_contents = os.listdir(path=directory_path+__recursive_path)
+    for entry in directory_contents:
+        full_path = directory_path+__recursive_path+entry
+        if os.path.isfile(full_path):
+            list_of_files.append((__recursive_path+entry, os.path.getmtime(full_path)))
+        if os.path.isdir(full_path):
+            list_of_files += find_all_local_files(directory_path, __recursive_path+entry+"/")
+    return list_of_files
 
 
 if __name__ == '__main__':
